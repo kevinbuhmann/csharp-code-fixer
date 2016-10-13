@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.MSBuild;
 using System;
@@ -20,6 +21,7 @@ namespace CSharpCodeFixer
             count += FixViolations(solutionPath, "SA1005", FixSA1005SingleLineCommentMustBeginWithASpace);
             count += FixViolations(solutionPath, "SA1028", FixSA1028CodeMustNotContainTrailingWhitespace);
             count += FixViolations(solutionPath, "SA1101", FixSA1101PrefixLocallCallsWithThis);
+            count += FixViolations(solutionPath, "SA1121", FixSA1121UseBuiltInTypeAlias);
             count += FixViolations(solutionPath, "SA1122", FixSA1122UseStringDotEmptyForEmptyStrings);
 
             return count;
@@ -83,6 +85,40 @@ namespace CSharpCodeFixer
                 string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start);
                 string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.Start);
                 code = $"{codeBeforeViolation}this.{codeAfterViolation}";
+            }
+
+            return code;
+        }
+
+        private static string FixSA1121UseBuiltInTypeAlias(string code, IEnumerable<Diagnostic> diagnostics)
+        {
+            Dictionary<string, string> aliases = new Dictionary<string, string>
+            {
+                { "Boolean", "bool" },
+                { "Byte", "byte" },
+                { "Char", "char" },
+                { "Decimal", "decimal" },
+                { "Double", "double" },
+                { "Int16", "short" },
+                { "Int32", "int" },
+                { "Int64", "long" },
+                { "Object", "object" },
+                { "SByte", "sbyte" },
+                { "Single", "single" },
+                { "String", "string" },
+                { "UInt16", "ushort" },
+                { "UInt32", "uint" },
+                { "UInt64", "ulong" }
+            };
+
+            foreach (Diagnostic diagnostic in diagnostics.OrderByDescending(d => d.Location.SourceSpan.Start))
+            {
+                string violation = code.Substring(diagnostic.Location.SourceSpan.Start, diagnostic.Location.SourceSpan.Length)
+                    .Replace("System.", string.Empty);
+
+                string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start);
+                string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.End);
+                code = $"{codeBeforeViolation}{aliases[violation]}{codeAfterViolation}";
             }
 
             return code;
