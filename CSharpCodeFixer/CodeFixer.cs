@@ -4,10 +4,8 @@ using Microsoft.CodeAnalysis.MSBuild;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,40 +13,21 @@ namespace CSharpCodeFixer
 {
     public static class CodeFixer
     {
-        private static ImmutableArray<DiagnosticAnalyzer> analyzers;
-
-        [SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", MessageId = "System.Reflection.Assembly.LoadFile", Justification = "No other option.")]
-        public static ImmutableArray<DiagnosticAnalyzer> Analyzers
+        public static int FixAllFixableViolations(string solutionPath)
         {
-            get
-            {
-                if (analyzers == null)
-                {
-                    Assembly stylecopAnalyzersAssembly = Assembly.LoadFile(GetPathToFile(@"StyleCop.Analyzers.dll"));
-                    analyzers = stylecopAnalyzersAssembly.GetTypes()
-                        .Where(t => t.IsAbstract == false && typeof(DiagnosticAnalyzer).IsAssignableFrom(t))
-                        .Select(t => Activator.CreateInstance(t) as DiagnosticAnalyzer)
-                        .ToImmutableArray();
-                }
+            int count = 0;
 
-                return analyzers;
-            }
+            count += FixViolations(solutionPath, "SA1005", FixSA1005SingleLineCommentMustBeginWithASpace);
+            count += FixViolations(solutionPath, "SA1028", FixSA1028CodeMustNotContainTrailingWhitespace);
+            count += FixViolations(solutionPath, "SA1101", FixSA1101PrefixLocallCallsWithThis);
+            count += FixViolations(solutionPath, "SA1122", FixSA1122UseStringDotEmptyForEmptyStrings);
+
+            return count;
         }
 
-        public static void FixAllFixableViolations(string solutionPath)
+        private static int FixViolations(string solutionPath, string violationId, Func<string, IEnumerable<Diagnostic>, string> fixViolations)
         {
-            FixViolations(solutionPath, "SA1005", FixSA1005SingleLineCommentMustBeginWithASpace);
-            FixViolations(solutionPath, "SA1028", FixSA1028CodeMustNotContainTrailingWhitespace);
-            FixViolations(solutionPath, "SA1101", FixSA1101PrefixLocallCallsWithThis);
-            FixViolations(solutionPath, "SA1122", FixSA1122UseStringDotEmptyForEmptyStrings);
-        }
-
-        private static void FixViolations(string solutionPath, string violationId, Func<string, IEnumerable<Diagnostic>, string> fixViolations)
-        {
-            Console.WriteLine();
-            Console.WriteLine($"Building to fix {violationId}...");
-
-            IEnumerable<Diagnostic> dianostics = BuildSolution(solutionPath)
+            IEnumerable<Diagnostic> dianostics = BuildSolution(solutionPath, violationId)
                 .Where(d => d.Id == violationId)
                 .ToList();
 
@@ -69,6 +48,8 @@ namespace CSharpCodeFixer
             }
 
             Console.WriteLine($"Done fixing {violationId}");
+
+            return dianostics.Count();
         }
 
         private static string FixSA1005SingleLineCommentMustBeginWithASpace(string code, IEnumerable<Diagnostic> diagnostics)
@@ -119,8 +100,11 @@ namespace CSharpCodeFixer
             return code;
         }
 
-        private static IEnumerable<Diagnostic> BuildSolution(string solutionPath)
+        private static IEnumerable<Diagnostic> BuildSolution(string solutionPath, string violationId)
         {
+            Console.WriteLine();
+            Console.WriteLine($"Building for {violationId}... ");
+
             using (MSBuildWorkspace workspace = MSBuildWorkspace.Create())
             {
                 Solution solution = workspace.OpenSolutionAsync(solutionPath).Result;
@@ -128,35 +112,31 @@ namespace CSharpCodeFixer
                 return solution
                     .GetProjectDependencyGraph()
                     .GetTopologicallySortedProjects()
-                    .SelectMany(projectId => BuildProject(solution, projectId))
+                    .SelectMany(projectId => BuildProject(solution, projectId, violationId))
                     .ToList();
             }
         }
 
-        private static IEnumerable<Diagnostic> BuildProject(Solution solution, ProjectId projectId)
+        private static IEnumerable<Diagnostic> BuildProject(Solution solution, ProjectId projectId, string violationId)
         {
             Project project = solution.GetProject(projectId);
 
             Console.WriteLine($"Building {project.Name}...");
+
             Task<Compilation> compilationTask = project.GetCompilationAsync();
             compilationTask.Wait();
             Compilation compilation = compilationTask.Result;
 
-            Console.WriteLine($"Running code analysis on {project.Name}...");
+            Console.WriteLine($"Running {violationId} analyzers on {project.Name}...");
+
+            ImmutableArray<DiagnosticAnalyzer> analyzers = AnalyzerCollection.GetAnalyzersForViolation(violationId);
             CompilationWithAnalyzersOptions options = new CompilationWithAnalyzersOptions(
                 new AnalyzerOptions(default(ImmutableArray<AdditionalText>)), OnAnalyzerException, false, false);
-            CompilationWithAnalyzers compilationWithAnalyzers = new CompilationWithAnalyzers(compilation, Analyzers, options);
+            CompilationWithAnalyzers compilationWithAnalyzers = new CompilationWithAnalyzers(compilation, analyzers, options);
 
             Task<ImmutableArray<Diagnostic>> analyzerDiagnosticsTask = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
             analyzerDiagnosticsTask.Wait();
             return analyzerDiagnosticsTask.Result;
-        }
-
-        private static string GetPathToFile(string file)
-        {
-            string exeFilePath = Assembly.GetExecutingAssembly().Location;
-            string exeFolder = Path.GetDirectoryName(exeFilePath);
-            return Path.Combine(exeFolder, file);
         }
 
         private static void OnAnalyzerException(Exception exception, DiagnosticAnalyzer analyzer, Diagnostic diagnostic)
