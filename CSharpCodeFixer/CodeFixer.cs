@@ -124,7 +124,7 @@ namespace CSharpCodeFixer
                         compilationTask.Wait();
                         Compilation compilation = compilationTask.Result;
 
-                        Console.WriteLine($"Running code analysis on on {project.Name}...");
+                        Console.WriteLine($"Running code analysis on {project.Name}...");
                         CompilationWithAnalyzersOptions options = new CompilationWithAnalyzersOptions(
                             new AnalyzerOptions(default(ImmutableArray<AdditionalText>)), OnAnalyzerException, false, false);
                         CompilationWithAnalyzers compilationWithAnalyzers = new CompilationWithAnalyzers(compilation, Analyzers, options);
