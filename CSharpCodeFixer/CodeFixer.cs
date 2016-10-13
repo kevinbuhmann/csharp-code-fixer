@@ -24,23 +24,23 @@ namespace CSharpCodeFixer
             count += FixViolations(solutionPath, "SA1121", FixSA1121UseBuiltInTypeAlias);
             count += FixViolations(solutionPath, "SA1122", FixSA1122UseStringDotEmptyForEmptyStrings);
 
+            count += FixViolations(solutionPath, "CS8019", FixCS8019UnncessaryUsingDirective);
+
             return count;
         }
 
         private static int FixViolations(string solutionPath, string violationId, Func<string, IEnumerable<Diagnostic>, string> fixViolations)
         {
-            IEnumerable<Diagnostic> dianostics = BuildSolution(solutionPath, violationId)
-                .Where(d => d.Id == violationId)
-                .ToList();
-
-            IEnumerable<IGrouping<string, Diagnostic>> groups = dianostics
-                .GroupBy(d => d.Location.GetLineSpan().Path)
-                .ToList();
+            ImmutableArray<Diagnostic> dianostics = BuildSolutionForViolation(solutionPath, violationId);
 
             Console.WriteLine();
             Console.WriteLine($"Found {dianostics.Count()} {violationId} violations...");
 
-            foreach (IGrouping<string, Diagnostic> fileDiagnostics in groups)
+            IEnumerable<IGrouping<string, Diagnostic>> diagnosticsByFile = dianostics
+                .GroupBy(d => d.Location.GetLineSpan().Path)
+                .ToList();
+
+            foreach (IGrouping<string, Diagnostic> fileDiagnostics in diagnosticsByFile)
             {
                 Console.WriteLine($"Processing {fileDiagnostics.Key}");
 
@@ -136,7 +136,19 @@ namespace CSharpCodeFixer
             return code;
         }
 
-        private static IEnumerable<Diagnostic> BuildSolution(string solutionPath, string violationId)
+        private static string FixCS8019UnncessaryUsingDirective(string code, IEnumerable<Diagnostic> diagnostics)
+        {
+            foreach (Diagnostic diagnostic in diagnostics.OrderByDescending(d => d.Location.SourceSpan.Start))
+            {
+                string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start);
+                string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.End);
+                code = $"{codeBeforeViolation}{codeAfterViolation.TrimStart()}";
+            }
+
+            return code;
+        }
+
+        private static ImmutableArray<Diagnostic> BuildSolutionForViolation(string solutionPath, string violationId)
         {
             Console.WriteLine();
             Console.WriteLine($"Building for {violationId}... ");
@@ -149,12 +161,14 @@ namespace CSharpCodeFixer
                     .GetProjectDependencyGraph()
                     .GetTopologicallySortedProjects()
                     .SelectMany(projectId => BuildProject(solution, projectId, violationId))
-                    .ToList();
+                    .ToImmutableArray();
             }
         }
 
-        private static IEnumerable<Diagnostic> BuildProject(Solution solution, ProjectId projectId, string violationId)
+        private static ImmutableArray<Diagnostic> BuildProject(Solution solution, ProjectId projectId, string violationId)
         {
+            ImmutableArray<Diagnostic> diagnostics = default(ImmutableArray<Diagnostic>);
+
             Project project = solution.GetProject(projectId);
 
             Console.WriteLine($"Building {project.Name}...");
@@ -162,17 +176,27 @@ namespace CSharpCodeFixer
             Task<Compilation> compilationTask = project.GetCompilationAsync();
             compilationTask.Wait();
             Compilation compilation = compilationTask.Result;
-
-            Console.WriteLine($"Running {violationId} analyzers on {project.Name}...");
+            diagnostics = compilation.GetDiagnostics();
 
             ImmutableArray<DiagnosticAnalyzer> analyzers = AnalyzerCollection.GetAnalyzersForViolation(violationId);
-            CompilationWithAnalyzersOptions options = new CompilationWithAnalyzersOptions(
-                new AnalyzerOptions(default(ImmutableArray<AdditionalText>)), OnAnalyzerException, false, false);
-            CompilationWithAnalyzers compilationWithAnalyzers = new CompilationWithAnalyzers(compilation, analyzers, options);
+            if (analyzers.Any())
+            {
+                Console.WriteLine($"Running {violationId} analyzers on {project.Name}...");
 
-            Task<ImmutableArray<Diagnostic>> analyzerDiagnosticsTask = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
-            analyzerDiagnosticsTask.Wait();
-            return analyzerDiagnosticsTask.Result;
+                CompilationWithAnalyzersOptions options = new CompilationWithAnalyzersOptions(
+                    new AnalyzerOptions(default(ImmutableArray<AdditionalText>)), OnAnalyzerException, false, false);
+                CompilationWithAnalyzers compilationWithAnalyzers = new CompilationWithAnalyzers(compilation, analyzers, options);
+
+                Task<ImmutableArray<Diagnostic>> analyzerDiagnosticsTask = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+                analyzerDiagnosticsTask.Wait();
+                diagnostics = analyzerDiagnosticsTask.Result;
+            }
+
+            ImmutableArray<Diagnostic> violationDiagnostics = diagnostics
+                .Where(d => d.Id == violationId)
+                .ToImmutableArray();
+
+            return violationDiagnostics;
         }
 
         private static void OnAnalyzerException(Exception exception, DiagnosticAnalyzer analyzer, Diagnostic diagnostic)
