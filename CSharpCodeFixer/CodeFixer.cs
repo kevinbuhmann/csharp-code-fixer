@@ -38,6 +38,7 @@ namespace CSharpCodeFixer
         public static void FixAllFixableViolations(string solutionPath)
         {
             FixViolations(solutionPath, "SA1005", FixSA1005SingleLineCommentMustBeginWithASpace);
+            FixViolations(solutionPath, "SA1028", FixSA1028CodeMustNotContainTrailingWhitespace);
             FixViolations(solutionPath, "SA1101", FixSA1101PrefixLocallCallsWithThis);
         }
 
@@ -76,6 +77,18 @@ namespace CSharpCodeFixer
                 string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start + 2);
                 string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.Start + 2);
                 code = $"{codeBeforeViolation} {codeAfterViolation}";
+            }
+
+            return code;
+        }
+
+        private static string FixSA1028CodeMustNotContainTrailingWhitespace(string code, IEnumerable<Diagnostic> diagnostics)
+        {
+            foreach (Diagnostic diagnostic in diagnostics.OrderByDescending(d => d.Location.SourceSpan.Start))
+            {
+                string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start);
+                string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.End);
+                code = $"{codeBeforeViolation}{codeAfterViolation}";
             }
 
             return code;
