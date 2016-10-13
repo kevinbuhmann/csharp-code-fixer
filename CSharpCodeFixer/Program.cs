@@ -10,33 +10,18 @@ namespace CSharpCodeFixer
         {
             args.ValidateNotNullParameter(nameof(args));
 
-            foreach (string path in args)
+            foreach (string solutionPath in args)
             {
-                if (Directory.Exists(path))
+                if (solutionPath.EndsWith(".sln") && File.Exists(solutionPath))
                 {
-                    Console.Write($"Processing directory {path}... ");
-                    string[] files = Directory.GetFiles(path, "*.cs", SearchOption.AllDirectories);
-                    Console.WriteLine($"{files.Length} files");
+                    Console.WriteLine($"Processing solution {solutionPath}... ");
 
-                    foreach (string file in files)
-                    {
-                        Console.Write($"Processing file {file}... ");
-                        CodeFixer.FixAll(file);
-                        Console.WriteLine($"done");
-                    }
-
-                    Console.WriteLine();
-                }
-                else if (File.Exists(path))
-                {
-                    Console.Write($"Processing file {path}... ");
-                    CodeFixer.FixAll(path);
-                    Console.WriteLine($"done");
+                    CodeFixer.FixAllFixableViolations(solutionPath);
                     Console.WriteLine();
                 }
                 else
                 {
-                    Console.WriteLine($"Error: {path} not found.");
+                    Console.WriteLine($"Error: Either {solutionPath} does not exit or it is not an solution file.");
                     Console.WriteLine();
                 }
             }
