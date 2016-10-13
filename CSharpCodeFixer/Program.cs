@@ -25,6 +25,9 @@ namespace CSharpCodeFixer
                     Console.WriteLine();
                 }
             }
+
+            Console.Write("Press any key to continue...");
+            Console.ReadKey();
         }
     }
 }
