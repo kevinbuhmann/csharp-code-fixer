@@ -6,9 +6,14 @@ namespace CSharpCodeFixer
 {
     public static class Program
     {
+        public const string ApplicationName = "C# Code Fixer";
+
         public static void Main(string[] args)
         {
             args.ValidateNotNullParameter(nameof(args));
+
+            string oldTitle = Console.Title;
+            Console.Title = ApplicationName;
 
             DateTime start = DateTime.Now;
 
@@ -37,6 +42,8 @@ namespace CSharpCodeFixer
             Console.WriteLine($"Finished in {runTime.TotalSeconds} seconds");
             Console.Write("Press any key to continue...");
             Console.ReadKey();
+
+            Console.Title = oldTitle;
         }
     }
 }
