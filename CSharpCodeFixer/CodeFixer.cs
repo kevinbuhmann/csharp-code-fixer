@@ -115,26 +115,28 @@ namespace CSharpCodeFixer
                 return solution
                     .GetProjectDependencyGraph()
                     .GetTopologicallySortedProjects()
-                    .SelectMany(projectId =>
-                    {
-                        Project project = solution.GetProject(projectId);
-
-                        Console.WriteLine($"Building {project.Name}...");
-                        Task<Compilation> compilationTask = project.GetCompilationAsync();
-                        compilationTask.Wait();
-                        Compilation compilation = compilationTask.Result;
-
-                        Console.WriteLine($"Running code analysis on {project.Name}...");
-                        CompilationWithAnalyzersOptions options = new CompilationWithAnalyzersOptions(
-                            new AnalyzerOptions(default(ImmutableArray<AdditionalText>)), OnAnalyzerException, false, false);
-                        CompilationWithAnalyzers compilationWithAnalyzers = new CompilationWithAnalyzers(compilation, Analyzers, options);
-
-                        Task<ImmutableArray<Diagnostic>> analyzerDiagnosticsTask = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
-                        analyzerDiagnosticsTask.Wait();
-                        return analyzerDiagnosticsTask.Result;
-                    })
+                    .SelectMany(projectId => BuildProject(solution, projectId))
                     .ToList();
             }
+        }
+
+        private static IEnumerable<Diagnostic> BuildProject(Solution solution, ProjectId projectId)
+        {
+            Project project = solution.GetProject(projectId);
+
+            Console.WriteLine($"Building {project.Name}...");
+            Task<Compilation> compilationTask = project.GetCompilationAsync();
+            compilationTask.Wait();
+            Compilation compilation = compilationTask.Result;
+
+            Console.WriteLine($"Running code analysis on {project.Name}...");
+            CompilationWithAnalyzersOptions options = new CompilationWithAnalyzersOptions(
+                new AnalyzerOptions(default(ImmutableArray<AdditionalText>)), OnAnalyzerException, false, false);
+            CompilationWithAnalyzers compilationWithAnalyzers = new CompilationWithAnalyzers(compilation, Analyzers, options);
+
+            Task<ImmutableArray<Diagnostic>> analyzerDiagnosticsTask = compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+            analyzerDiagnosticsTask.Wait();
+            return analyzerDiagnosticsTask.Result;
         }
 
         private static string GetPathToFile(string file)
