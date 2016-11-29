@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Vstack.Extensions;
+using Vstack.Common;
 
 namespace CSharpCodeFixer
 {

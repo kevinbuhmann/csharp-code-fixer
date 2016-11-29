@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using Vstack.Extensions;
+using Vstack.Common;
 
 namespace CSharpCodeFixer
 {
