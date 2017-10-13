@@ -5,7 +5,7 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharpCodeFixer", "CSharpCodeFixer\CSharpCodeFixer.csproj", "{A71565D1-E474-4CAE-B1D1-638AA966BDE5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vstack.Common", "..\..\vintage-software\vstack-common\Vstack.Common\Vstack.Common.csproj", "{029ECBE3-6E0E-498E-80A7-BAD385891C91}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vstack.Common", "..\..\vintage-software\vstack\Vstack.Common\Vstack.Common.csproj", "{029ECBE3-6E0E-498E-80A7-BAD385891C91}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{34087347-DA36-428F-A468-9A78883AC6A1}"
 	ProjectSection(SolutionItems) = preProject
