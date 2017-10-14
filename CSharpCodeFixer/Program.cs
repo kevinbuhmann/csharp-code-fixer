@@ -10,7 +10,7 @@ namespace CSharpCodeFixer
 
         public static void Main(string[] args)
         {
-            args.ValidateNotNullParameter(nameof(args));
+            args.ValidateNotNull();
 
             string oldTitle = Console.Title;
             Console.Title = ApplicationName;
