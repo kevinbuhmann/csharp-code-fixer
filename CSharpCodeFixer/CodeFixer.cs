@@ -21,8 +21,11 @@ namespace CSharpCodeFixer
             count += FixViolations(solutionPath, "SA1005", FixSA1005SingleLineCommentMustBeginWithASpace);
             count += FixViolations(solutionPath, "SA1028", FixSA1028CodeMustNotContainTrailingWhitespace);
             count += FixViolations(solutionPath, "SA1101", FixSA1101PrefixLocallCallsWithThis);
+            count += FixViolations(solutionPath, "SA1119", FixSA1119StatementMustNotUseUnnecessaryParenthesis);
             count += FixViolations(solutionPath, "SA1121", FixSA1121UseBuiltInTypeAlias);
             count += FixViolations(solutionPath, "SA1122", FixSA1122UseStringDotEmptyForEmptyStrings);
+            count += FixViolations(solutionPath, "SA1513", FixSA1513ClosingBraceMustBeFollowedByBlankLine);
+            count += FixViolations(solutionPath, "SA1516", FixSA1516ElementsMustBeSeparatedByBlankLine);
 
             count += FixViolations(solutionPath, "CS8019", FixCS8019UnncessaryUsingDirective);
 
@@ -90,6 +93,19 @@ namespace CSharpCodeFixer
             return code;
         }
 
+        private static string FixSA1119StatementMustNotUseUnnecessaryParenthesis(string code, IEnumerable<Diagnostic> diagnostics)
+        {
+            foreach (Diagnostic diagnostic in diagnostics.OrderByDescending(d => d.Location.SourceSpan.Start))
+            {
+                string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start);
+                string statementWithoutParenthesis = code.Substring(diagnostic.Location.SourceSpan.Start + 1, diagnostic.Location.SourceSpan.Length - 2);
+                string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.End);
+                code = $"{codeBeforeViolation}{statementWithoutParenthesis}{codeAfterViolation}";
+            }
+
+            return code;
+        }
+
         private static string FixSA1121UseBuiltInTypeAlias(string code, IEnumerable<Diagnostic> diagnostics)
         {
             Dictionary<string, string> aliases = new Dictionary<string, string>
@@ -131,6 +147,30 @@ namespace CSharpCodeFixer
                 string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start);
                 string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.End);
                 code = $"{codeBeforeViolation}string.Empty{codeAfterViolation}";
+            }
+
+            return code;
+        }
+
+        private static string FixSA1513ClosingBraceMustBeFollowedByBlankLine(string code, IEnumerable<Diagnostic> diagnostics)
+        {
+            foreach (Diagnostic diagnostic in diagnostics.OrderByDescending(d => d.Location.SourceSpan.Start))
+            {
+                string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start);
+                string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.Start);
+                code = $"{codeBeforeViolation}{Environment.NewLine}{codeAfterViolation}";
+            }
+
+            return code;
+        }
+
+        private static string FixSA1516ElementsMustBeSeparatedByBlankLine(string code, IEnumerable<Diagnostic> diagnostics)
+        {
+            foreach (Diagnostic diagnostic in diagnostics.OrderByDescending(d => d.Location.SourceSpan.Start))
+            {
+                string codeBeforeViolation = code.Substring(0, diagnostic.Location.SourceSpan.Start);
+                string codeAfterViolation = code.Substring(diagnostic.Location.SourceSpan.Start);
+                code = $"{codeBeforeViolation}{Environment.NewLine}{codeAfterViolation}";
             }
 
             return code;
