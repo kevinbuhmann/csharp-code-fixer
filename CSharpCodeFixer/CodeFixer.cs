@@ -43,18 +43,25 @@ namespace CSharpCodeFixer
                 .GroupBy(d => d.Location.GetLineSpan().Path)
                 .ToList();
 
+            int count = 0;
+
             foreach (IGrouping<string, Diagnostic> fileDiagnostics in diagnosticsByFile)
             {
-                Console.WriteLine($"Processing {fileDiagnostics.Key}");
+                if (fileDiagnostics.Key.Contains(@"\generated\") == false)
+                {
+                    Console.WriteLine($"Processing {fileDiagnostics.Key}");
 
-                string code = File.ReadAllText(fileDiagnostics.Key);
-                code = fixViolations(code, fileDiagnostics);
-                File.WriteAllText(fileDiagnostics.Key, code, Encoding.UTF8);
+                    string code = File.ReadAllText(fileDiagnostics.Key);
+                    code = fixViolations(code, fileDiagnostics);
+                    File.WriteAllText(fileDiagnostics.Key, code, Encoding.UTF8);
+
+                    count += fileDiagnostics.Count();
+                }
             }
 
             Console.WriteLine($"Done fixing {violationId}");
 
-            return dianostics.Count();
+            return count;
         }
 
         private static string FixSA1005SingleLineCommentMustBeginWithASpace(string code, IEnumerable<Diagnostic> diagnostics)
@@ -120,7 +127,7 @@ namespace CSharpCodeFixer
                 { "Int64", "long" },
                 { "Object", "object" },
                 { "SByte", "sbyte" },
-                { "Single", "single" },
+                { "Single", "float" },
                 { "String", "string" },
                 { "UInt16", "ushort" },
                 { "UInt32", "uint" },

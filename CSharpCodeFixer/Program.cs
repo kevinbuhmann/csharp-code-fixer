@@ -40,8 +40,6 @@ namespace CSharpCodeFixer
 
             Console.WriteLine();
             Console.WriteLine($"Finished in {runTime.TotalSeconds} seconds");
-            Console.Write("Press any key to continue...");
-            Console.ReadKey();
 
             Console.Title = oldTitle;
         }
